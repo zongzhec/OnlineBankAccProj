@@ -1,5 +1,7 @@
 package foo.zongzhe.acc.controller;
 
+import foo.zongzhe.acc.entity.AccSummary;
+import foo.zongzhe.acc.entity.AccWithTrans;
 import foo.zongzhe.acc.entity.Transaction;
 import foo.zongzhe.acc.helper.FileHelper;
 import foo.zongzhe.acc.process.AccCalProcess;
@@ -18,6 +20,8 @@ public class Controller {
     public static String rootDirPath, srcDirPath, destFileName, destFilePath;
     public static ArrayList<Transaction> transactions;
     public static HashMap<String, HashMap<String, ArrayList<Transaction>>> transMap;
+    public static ArrayList<AccWithTrans> accWithTransList;
+    public static HashMap<String, AccSummary> accSummaryMap;
 
     public static void main(String[] args) {
         Controller controller = new Controller();
@@ -33,7 +37,11 @@ public class Controller {
 
         // Enter into main process
         AccCalProcess calProcess = new AccCalProcess();
-        calProcess.readAndStoreInfo();
+        accWithTransList = calProcess.readAndStoreInfo();
+
+        for (AccWithTrans summary : accWithTransList) {
+            System.out.println(summary);
+        }
 
     }
 
@@ -53,6 +61,8 @@ public class Controller {
 //        System.out.println(properties.getProperty("RootLoc"));
         transactions = new ArrayList<>();
         transMap = new HashMap<>();
+        accWithTransList = new ArrayList<>();
+        accSummaryMap = new HashMap<>();
     }
 
     public void checkVerificationCode() {

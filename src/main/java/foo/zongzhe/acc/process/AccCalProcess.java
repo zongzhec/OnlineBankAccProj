@@ -1,16 +1,14 @@
 package foo.zongzhe.acc.process;
 
 import foo.zongzhe.acc.controller.Controller;
-import foo.zongzhe.acc.entity.AccSummary;
+import foo.zongzhe.acc.entity.AccWithTrans;
 import foo.zongzhe.acc.entity.SheetMap;
 import foo.zongzhe.acc.entity.Transaction;
 import foo.zongzhe.acc.helper.SystemHelper;
-import foo.zongzhe.utils.common.DateUtil;
 import foo.zongzhe.utils.file.ExcelUtil;
 
 import java.io.File;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -38,8 +36,10 @@ public class AccCalProcess {
         accTypes.add("借款户");
     }
 
-    public void readAndStoreInfo() {
-// Read all files under srcDirPath
+    public ArrayList<AccWithTrans> readAndStoreInfo() {
+        ArrayList<AccWithTrans> accSummarieList = new ArrayList<>();
+
+        // Read all files under srcDirPath
         File srcDir = new File(Controller.srcDirPath);
         File[] files = srcDir.listFiles();
         if (files == null || files.length == 0) {
@@ -66,10 +66,12 @@ public class AccCalProcess {
                 if (fileContents == null || fileContents.length <= 2) {
                     System.out.println(file + " 中没有内容，跳过处理此文件");
                 } else {
-                    processContents(accAbbr, accType, fileContents);
+                    AccWithTrans summary = processContents(accAbbr, accType, fileContents);
+                    accSummarieList.add(summary);
                 }
             }
         }
+        return accSummarieList;
     }
 
     public String[][] readFileContent(File file) {
@@ -91,9 +93,9 @@ public class AccCalProcess {
      *
      * @param contents
      */
-    public void processContents(String accAbbr, String accType, String[][] contents) {
-        AccSummary summary = new AccSummary(accAbbr, accType);
-        ArrayList<Transaction> transList = summary.getTransactions();
+    public AccWithTrans processContents(String accAbbr, String accType, String[][] contents) {
+        AccWithTrans summary = new AccWithTrans(accAbbr, accType);
+        HashMap<String, Transaction> transMap = summary.getTransMap();
 
         // 招行的前几行是空的,而交行最后一行是汇总
         SheetMap sheetMap = new SheetMap();
@@ -103,17 +105,20 @@ public class AccCalProcess {
 
         for (int i = beginRow; i <= endRow; i++) {
             String dateStr = parseDate(bankType, contents[i][sheetMap.getCellMap().get(bankType).get(SheetMap.TRANS_DATE).col]);
-            String transAbstract = parseTransAbs(bankType, contents[i][sheetMap.getCellMap().get(bankType).get(SheetMap.TRANS_ABS).col]);
+            String transAbstract = parseTransAbs(bankType, accType,
+                    contents[i][sheetMap.getCellMap().get(bankType).get(SheetMap.TRANS_ABS).col]);
             Double[] prices = parsePrice(bankType,
                     contents[i][sheetMap.getCellMap().get(bankType).get(SheetMap.BL_FLAG).col],
                     contents[i][sheetMap.getCellMap().get(bankType).get(SheetMap.INCOME_PRICE).col],
                     contents[i][sheetMap.getCellMap().get(bankType).get(SheetMap.OUTCOME_PRICE).col]);
-            transList.add(new Transaction(dateStr, transAbstract, prices[0], prices[1]));
+
+            Transaction trans = new Transaction(dateStr, transAbstract, prices[0], prices[1]);
+            mergeTransIntoMap(bankType, accType, transMap, trans);
         }
 
         System.out.println(summary);
+        return summary;
     }
-
 
     /**
      * Parse dates into MM/dd format to match the summarize sheet.
@@ -131,9 +136,8 @@ public class AccCalProcess {
                 dateStr = fullDateStr.substring(4, 6) + "/" + fullDateStr.substring(6, 8);
                 break;
             case SheetMap.BANK_NAME_JT: // 2020/11/27 11:52
-                System.out.println("dateStrInput: " + dateStrInput);
                 fullDateStr = dateStrInput.substring(0, 10);
-                dateStr = fullDateStr.substring(5, 7)+ "/" + fullDateStr.substring(8, 10);
+                dateStr = fullDateStr.substring(5, 7) + "/" + fullDateStr.substring(8, 10);
                 break;
             default:
                 System.out.println("日期格式无法被识别，请联系维护人员。");
@@ -141,10 +145,17 @@ public class AccCalProcess {
         return dateStr;
     }
 
-    private String parseTransAbs(String bankType, String rawAbstract) {
+    private String parseTransAbs(String bankType, String accType, String rawAbstract) {
         String transAbs = rawAbstract;
 
-        if (transAbs.contains("ETC")) transAbs = "ETC";
+        // Apply some rules
+        if (transAbs.contains("ETC")){
+            // ETC扣款#沪ENU543 -> #沪ENU543ETC扣款
+            String licenceNum = transAbs.substring(transAbs.indexOf('#'));
+            transAbs = licenceNum + "ETC扣款";
+        }
+//        if (transAbs.contains("手续费")) transAbs = appendBankAndAccType(bankType ,accType,"支付手续费");
+        if (transAbs.contains("手续费")) transAbs = "支付手续费";
 
         return transAbs;
     }
@@ -161,14 +172,59 @@ public class AccCalProcess {
                 prices[1] = outcomeStr.isEmpty() ? 0.00 : Double.parseDouble(outcomeStr);
                 break;
             case SheetMap.BANK_NAME_JT: // 交行要先看借贷标志
-                prices[0] = (blFlag.equals("借")) ? Double.parseDouble(incomeStr) : 0.00;
-                prices[1] = (blFlag.equals("贷")) ? Double.parseDouble(outcomeStr) : 0.00;
+                prices[0] = (blFlag.equals("贷")) ? Double.parseDouble(incomeStr) : 0.00;
+                prices[1] = (blFlag.equals("借")) ? Double.parseDouble(outcomeStr) : 0.00;
                 break;
             default:
                 System.out.println("金额格式无法被识别，请联系维护人员。");
         }
 
         return prices;
+    }
+
+    private void mergeTransIntoMap(String bankType, String accType,
+                                   HashMap<String, Transaction> transMap, Transaction transToMerge) {
+        Transaction transOrigin = transToMerge;
+        String key = transToMerge.getTransDate() + "_" + transToMerge.getTransAbstract();
+
+        // Special treat on key set
+//        if (key.contains("ETC")) key = "ETC";
+
+        if (transMap.containsKey(key)) {
+            transOrigin = transMap.get(key);
+            transOrigin.setIncomePrice(transOrigin.getIncomePrice() + transToMerge.getIncomePrice());
+            transOrigin.setOutcomePrice(transOrigin.getOutcomePrice() + transToMerge.getOutcomePrice());
+
+            // Apply some special rules
+           /* if (key.equals("ETC")) {
+                String transAbs = transToMerge.getTransAbstract();
+                String transOriAbs = transOrigin.getTransAbstract();
+//                transOriAbs = appendBankAndAccType(bankType, accType, transOriAbs);
+                System.out.println("transAbs: " + transAbs);
+                String licenceNum = transAbs.substring(transAbs.indexOf('#'));
+                // Append the licence num if not done yet
+                if (!transOriAbs.contains(licenceNum)) {
+                    transOrigin.setTransAbstract(transOriAbs + licenceNum);
+                }
+            }*/
+
+        }
+        transMap.put(key, transOrigin);
+    }
+
+    /**
+     * Add bank type info and acc type info for the abstract
+     *
+     * @param bankType
+     * @param accType
+     * @param transAbs
+     * @return
+     */
+    private String appendBankAndAccType(String bankType, String accType, String transAbs) {
+        if (!transAbs.contains(bankType)) {
+            transAbs = bankType + accType + transAbs;
+        }
+        return transAbs;
     }
 
 }
