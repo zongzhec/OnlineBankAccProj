@@ -1,82 +1,14 @@
 package foo.zongzhe.acc.entity;
 
-import java.util.ArrayList;
-
 /**
- * 记录与交易有关的字段，仅选取汇总时的必要字段。
+ * 记录与交易有关的字段，所有编号都用String表示，因为可能首位为0。
  */
 public class Transaction {
-    private String transDate; // 交易时间
-    private String transAbstract; // 摘要
-    private double incomePrice; // 收入金额
-    private double outcomePrice; // 支出金额
 
-    public Transaction() {
-        transDate = "";
-        transAbstract = "";
-        incomePrice = 0.00;
-        outcomePrice = 0.00;
-    }
-
-    public Transaction(String transDate, String transAbstract, String accType) {
-        this.transDate = transDate;
-        this.transAbstract = transAbstract;
-        incomePrice = 0.00;
-        outcomePrice = 0.00;
-    }
-
-    public Transaction(String transDate, String transAbstract, double incomePrice, double outcomePrice) {
-        this.transDate = transDate;
-        this.transAbstract = transAbstract;
-        this.incomePrice = incomePrice;
-        this.outcomePrice = outcomePrice;
-    }
-
-    public String getTransDate() {
-        return transDate;
-    }
-
-    public void setTransDate(String transDate) {
-        this.transDate = transDate;
-    }
-
-    public String getTransAbstract() {
-        return transAbstract;
-    }
-
-    public void setTransAbstract(String transAbstract) {
-        this.transAbstract = transAbstract;
-    }
-
-    public double getIncomePrice() {
-        return incomePrice;
-    }
-
-    public void setIncomePrice(double incomePrice) {
-        this.incomePrice = incomePrice;
-    }
-
-    public double getOutcomePrice() {
-        return outcomePrice;
-    }
-
-    public void setOutcomePrice(double outcomePrice) {
-        this.outcomePrice = outcomePrice;
-    }
-
-    @Override
-    public String toString() {
-        return "Transaction{" +
-                "transDate='" + transDate + '\'' +
-                ", transAbstract='" + transAbstract + '\'' +
-                ", incomePrice=" + incomePrice +
-                ", outcomePrice=" + outcomePrice +
-                '}';
-    }
-
-    /*
     private String accNum;  // 账号
     private String accName; // 户名
+    private String transDate; // 交易时间
+    private String transAbstract; // 摘要
     private String voucherType; // 凭证种类
     private String voucherNum; // 凭证号码
     private String busiNum; // 企业业务编号
@@ -254,5 +186,4 @@ public class Transaction {
                 ", leBoFlag='" + leBoFlag + '\'' +
                 '}';
     }
-    */
 }
