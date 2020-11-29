@@ -1,6 +1,7 @@
 package foo.zongzhe.acc.process;
 
 import foo.zongzhe.acc.controller.Controller;
+import foo.zongzhe.acc.entity.AccSummary;
 import foo.zongzhe.acc.entity.AccWithTrans;
 import foo.zongzhe.acc.entity.SheetMap;
 import foo.zongzhe.acc.entity.Transaction;
@@ -227,4 +228,33 @@ public class AccCalProcess {
         return transAbs;
     }
 
+    /**
+     * Group the transactions by date, bankType, and abstract.
+     * @param accWithTransList
+     * @return
+     */
+    public HashMap<String, AccSummary> sumUpAcc(ArrayList<AccWithTrans> accWithTransList) {
+        HashMap<String, AccSummary> accSummaryMap = new HashMap<>();
+        for (AccWithTrans accWithTrans: accWithTransList){
+            // key is account abbr. If not exist, create one.
+            String accAbbr = accWithTrans.getAccAbbr();
+            if (!accSummaryMap.containsKey(accAbbr)){
+                accSummaryMap.put(accAbbr, new AccSummary());
+            }
+
+            AccSummary accSummary = accSummaryMap.get(accAbbr);
+
+            for (String transKey: accWithTrans.getTransMap().keySet()){
+
+            }
+            // Allocate date
+            String dateStr = accSummary.getDate();
+
+            String transAbbr = accSummary.getTransAbstract();
+
+
+        }
+
+        return accSummaryMap;
+    }
 }

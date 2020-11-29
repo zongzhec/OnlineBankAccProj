@@ -43,6 +43,8 @@ public class Controller {
             System.out.println(summary);
         }
 
+        accSummaryMap = calProcess.sumUpAcc(accWithTransList);
+
     }
 
     public void initialize() {
