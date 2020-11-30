@@ -1,7 +1,7 @@
 package foo.zongzhe.acc.process;
 
 import foo.zongzhe.acc.controller.Controller;
-import foo.zongzhe.acc.entity.AccSummary;
+import foo.zongzhe.acc.entity.AccSummary2;
 import foo.zongzhe.acc.entity.AccWithTrans;
 import foo.zongzhe.acc.entity.SheetMap;
 import foo.zongzhe.acc.entity.Transaction;
@@ -193,8 +193,8 @@ public class AccCalProcess {
 
         if (transMap.containsKey(key)) {
             transOrigin = transMap.get(key);
-            transOrigin.setIncomePrice(transOrigin.getIncomePrice() + transToMerge.getIncomePrice());
-            transOrigin.setOutcomePrice(transOrigin.getOutcomePrice() + transToMerge.getOutcomePrice());
+            transOrigin.setIncomeJbh(transOrigin.getIncomeJbh() + transToMerge.getIncomeJbh());
+            transOrigin.setOutcomeJbh(transOrigin.getOutcomeJbh() + transToMerge.getOutcomeJbh());
 
             // Apply some special rules
            /* if (key.equals("ETC")) {
@@ -233,24 +233,24 @@ public class AccCalProcess {
      * @param accWithTransList
      * @return
      */
-    public HashMap<String, AccSummary> sumUpAcc(ArrayList<AccWithTrans> accWithTransList) {
-        HashMap<String, AccSummary> accSummaryMap = new HashMap<>();
+    public HashMap<String, AccSummary2> sumUpAcc(ArrayList<AccWithTrans> accWithTransList) {
+        HashMap<String, AccSummary2> accSummaryMap = new HashMap<>();
         for (AccWithTrans accWithTrans: accWithTransList){
             // key is account abbr. If not exist, create one.
             String accAbbr = accWithTrans.getAccAbbr();
             if (!accSummaryMap.containsKey(accAbbr)){
-                accSummaryMap.put(accAbbr, new AccSummary());
+                accSummaryMap.put(accAbbr, new AccSummary2());
             }
 
-            AccSummary accSummary = accSummaryMap.get(accAbbr);
+            AccSummary2 accSummary2 = accSummaryMap.get(accAbbr);
 
             for (String transKey: accWithTrans.getTransMap().keySet()){
 
             }
             // Allocate date
-            String dateStr = accSummary.getDate();
+            String dateStr = accSummary2.getDate();
 
-            String transAbbr = accSummary.getTransAbstract();
+            String transAbbr = accSummary2.getTransAbstract();
 
 
         }

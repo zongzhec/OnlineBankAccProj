@@ -4,9 +4,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class AccWithTrans {
-    private String accAbbr; // 账户缩写
+
     private String accType; // 户种：基本户、一般户、贷款户、理财户、社保户、现金、借款户
     private HashMap<String, Transaction> transMap;
+
+    private String accAbbr; // 账户缩写
 
     public AccWithTrans(String accAbbr, String accType) {
         this.accAbbr = accAbbr;

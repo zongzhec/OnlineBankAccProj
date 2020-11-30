@@ -1,35 +1,36 @@
 package foo.zongzhe.acc.entity;
 
-import java.util.ArrayList;
-
 /**
  * 记录与交易有关的字段，仅选取汇总时的必要字段。
  */
 public class Transaction {
+    private String accAbbr; // 户名缩写
     private String transDate; // 交易时间
     private String transAbstract; // 摘要
-    private double incomePrice; // 收入金额
-    private double outcomePrice; // 支出金额
+    private Double incomeJbh; // 基本户收入
+    private Double outcomeJbh; // 基本户支出
+    private Double imcomeYbh; // 一般户收入
+    private Double outcomeYbh; // 一般户支出
 
     public Transaction() {
         transDate = "";
         transAbstract = "";
-        incomePrice = 0.00;
-        outcomePrice = 0.00;
+        incomeJbh = 0.00;
+        outcomeJbh = 0.00;
     }
 
     public Transaction(String transDate, String transAbstract, String accType) {
         this.transDate = transDate;
         this.transAbstract = transAbstract;
-        incomePrice = 0.00;
-        outcomePrice = 0.00;
+        incomeJbh = 0.00;
+        outcomeJbh = 0.00;
     }
 
-    public Transaction(String transDate, String transAbstract, double incomePrice, double outcomePrice) {
+    public Transaction(String transDate, String transAbstract, double incomeJbh, double outcomePrice) {
         this.transDate = transDate;
         this.transAbstract = transAbstract;
-        this.incomePrice = incomePrice;
-        this.outcomePrice = outcomePrice;
+        this.incomeJbh = incomeJbh;
+        this.outcomeJbh = outcomePrice;
     }
 
     public String getTransDate() {
@@ -48,20 +49,20 @@ public class Transaction {
         this.transAbstract = transAbstract;
     }
 
-    public double getIncomePrice() {
-        return incomePrice;
+    public double getIncomeJbh() {
+        return incomeJbh;
     }
 
-    public void setIncomePrice(double incomePrice) {
-        this.incomePrice = incomePrice;
+    public void setIncomeJbh(double incomeJbh) {
+        this.incomeJbh = incomeJbh;
     }
 
-    public double getOutcomePrice() {
-        return outcomePrice;
+    public double getOutcomeJbh() {
+        return outcomeJbh;
     }
 
-    public void setOutcomePrice(double outcomePrice) {
-        this.outcomePrice = outcomePrice;
+    public void setOutcomeJbh(double outcomeJbh) {
+        this.outcomeJbh = outcomeJbh;
     }
 
     @Override
@@ -69,8 +70,8 @@ public class Transaction {
         return "Transaction{" +
                 "transDate='" + transDate + '\'' +
                 ", transAbstract='" + transAbstract + '\'' +
-                ", incomePrice=" + incomePrice +
-                ", outcomePrice=" + outcomePrice +
+                ", incomePrice=" + incomeJbh +
+                ", outcomePrice=" + outcomeJbh +
                 '}';
     }
 

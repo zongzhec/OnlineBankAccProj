@@ -1,6 +1,6 @@
 package foo.zongzhe.acc.controller;
 
-import foo.zongzhe.acc.entity.AccSummary;
+import foo.zongzhe.acc.entity.AccSummary2;
 import foo.zongzhe.acc.entity.AccWithTrans;
 import foo.zongzhe.acc.entity.Transaction;
 import foo.zongzhe.acc.helper.FileHelper;
@@ -21,7 +21,7 @@ public class Controller {
     public static ArrayList<Transaction> transactions;
     public static HashMap<String, HashMap<String, ArrayList<Transaction>>> transMap;
     public static ArrayList<AccWithTrans> accWithTransList;
-    public static HashMap<String, AccSummary> accSummaryMap;
+    public static HashMap<String, AccSummary2> accSummaryMap;
 
     public static void main(String[] args) {
         Controller controller = new Controller();
