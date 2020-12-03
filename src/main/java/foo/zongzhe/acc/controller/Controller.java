@@ -1,16 +1,15 @@
 package foo.zongzhe.acc.controller;
 
-import foo.zongzhe.acc.entity.AccSummary2;
 import foo.zongzhe.acc.entity.AccWithTrans;
-import foo.zongzhe.acc.entity.Transaction;
 import foo.zongzhe.acc.helper.FileHelper;
 import foo.zongzhe.acc.process.AccCalProcess;
 import foo.zongzhe.utils.security.VerifyUtil;
 
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Properties;
 import java.util.Scanner;
 
@@ -18,10 +17,7 @@ public class Controller {
 
     public static Properties properties;
     public static String rootDirPath, srcDirPath, destFileName, destFilePath;
-    public static ArrayList<Transaction> transactions;
-    public static HashMap<String, HashMap<String, ArrayList<Transaction>>> transMap;
     public static ArrayList<AccWithTrans> accWithTransList;
-    public static HashMap<String, AccSummary2> accSummaryMap;
 
     public static void main(String[] args) {
         Controller controller = new Controller();
@@ -37,14 +33,7 @@ public class Controller {
 
         // Enter into main process
         AccCalProcess calProcess = new AccCalProcess();
-        accWithTransList = calProcess.readAndStoreInfo();
-
-        for (AccWithTrans summary : accWithTransList) {
-            System.out.println(summary);
-        }
-
-        accSummaryMap = calProcess.sumUpAcc(accWithTransList);
-
+        accWithTransList = calProcess.processAccInfo();
     }
 
     public void initialize() {
@@ -60,11 +49,6 @@ public class Controller {
         } catch (IOException e) {
             e.printStackTrace();
         }
-//        System.out.println(properties.getProperty("RootLoc"));
-        transactions = new ArrayList<>();
-        transMap = new HashMap<>();
-        accWithTransList = new ArrayList<>();
-        accSummaryMap = new HashMap<>();
     }
 
     public void checkVerificationCode() {

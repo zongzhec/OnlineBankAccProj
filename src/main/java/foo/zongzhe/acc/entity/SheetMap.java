@@ -13,6 +13,9 @@ public class SheetMap {
     public static final String BANK_NAME_JT = "交行";
     public static final String BANK_NAME_ZS = "招行";
 
+    public static final String ACC_TYPE_JBH = "基本户";
+    public static final String ACC_TYPE_YBH = "一般户";
+
     public static final String TRANS_DATE = "TRANS_DATE";
     public static final String TRANS_ABS = "TRANS_ABS";
     public static final String ACC_TYPE = "ACC_TYPE";

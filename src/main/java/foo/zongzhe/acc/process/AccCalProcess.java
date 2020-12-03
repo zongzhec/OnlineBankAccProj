@@ -1,7 +1,6 @@
 package foo.zongzhe.acc.process;
 
 import foo.zongzhe.acc.controller.Controller;
-import foo.zongzhe.acc.entity.AccSummary2;
 import foo.zongzhe.acc.entity.AccWithTrans;
 import foo.zongzhe.acc.entity.SheetMap;
 import foo.zongzhe.acc.entity.Transaction;
@@ -15,12 +14,9 @@ import java.util.HashMap;
 
 public class AccCalProcess {
 
-    private static ArrayList<Transaction> transactions;
-    private HashMap<String, HashMap<String, ArrayList<Transaction>>> transMap;
     public static ArrayList<String> accTypes;
 
     public AccCalProcess() {
-        transMap = Controller.transMap;
         if (accTypes == null || accTypes.size() == 0) {
             loadAccTypes();
         }
@@ -37,10 +33,123 @@ public class AccCalProcess {
         accTypes.add("借款户");
     }
 
-    public ArrayList<AccWithTrans> readAndStoreInfo() {
-        ArrayList<AccWithTrans> accSummarieList = new ArrayList<>();
+    /**
+     * 第一次整理 统一格式，在读取文件的时候同时进行
+     * 第二次整理 按摘要合并金额
+     * 第三次整理 按金额更新摘要
+     * 第四次整理 按日期汇总
+     *
+     * @return
+     */
+    public ArrayList<AccWithTrans> processAccInfo() {
 
-        // Read all files under srcDirPath
+        // 读取文件，并进行第一次整理
+        HashMap<String, ArrayList<Transaction>> rawTranMap = readTransFromRawFile();
+
+        // 第二次整理
+        HashMap<String, ArrayList<Transaction>> transGroupedPrice = groupPriceInTrans(rawTranMap);
+
+        // 第三次整理
+        updateTransAbs(transGroupedPrice);
+
+        // 第四次整理
+        HashMap<String, HashMap<String, Transaction>> transSummary = summaryTrans(transGroupedPrice);
+
+        System.out.println(transSummary);
+
+        return null;
+    }
+
+    private HashMap<String, HashMap<String, Transaction>> summaryTrans(HashMap<String, ArrayList<Transaction>> inputTransMap) {
+        // First String is accAbbr, second String is date
+        HashMap<String, HashMap<String, Transaction>> transMap = new HashMap<>();
+
+        for (String key : inputTransMap.keySet()) {
+            HashMap<String, Transaction> dateGroupedTrans = new HashMap<>();
+            ArrayList<Transaction> transList = inputTransMap.get(key);
+            for (Transaction trans : transList) {
+                String dateKey = trans.getTransDate();
+                trans.setTransAbstract(trans.getBankAbbr() + trans.getAccType() + trans.getTransAbstract());
+                if (dateGroupedTrans.containsKey(dateKey)) {
+                    Transaction existingTrans = dateGroupedTrans.get(dateKey);
+                    existingTrans.setTransAbstract(existingTrans.getTransAbstract() + "+" + trans.getTransAbstract());
+                    existingTrans.setIncomeJbh(existingTrans.getIncomeJbh() + trans.getIncomeJbh());
+                    existingTrans.setOutcomeJbh(existingTrans.getOutcomeJbh() + trans.getOutcomeJbh());
+                    existingTrans.setIncomeYbh(existingTrans.getIncomeYbh() + trans.getIncomeYbh());
+                    existingTrans.setOutcomeYbh(existingTrans.getOutcomeYbh() + trans.getOutcomeYbh());
+                } else {
+                    dateGroupedTrans.put(dateKey, trans);
+                }
+            }
+            transMap.put(key, dateGroupedTrans);
+        }
+
+        return transMap;
+    }
+
+    private void updateTransAbs(HashMap<String, ArrayList<Transaction>> transMap) {
+        for (ArrayList<Transaction> tranList : transMap.values()) {
+            for (Transaction tran : tranList) {
+                String transAbs = tran.getTransAbstract();
+                double incomePrice = (tran.getIncomeJbh() == 0) ? tran.getIncomeYbh() : tran.getIncomeJbh();
+                double outcomePrice = (tran.getOutcomeJbh() == 0) ? tran.getOutcomeYbh() : tran.getOutcomeJbh();
+                double validPrice = (incomePrice == 0) ? outcomePrice : incomePrice;
+                if (transAbs.contains("ETC")) {
+                    String[] abs = transAbs.split("#");
+                    transAbs = abs[0] + validPrice + "#" + abs[1];
+                } else {
+                    transAbs = transAbs + validPrice;
+                }
+                tran.setTransAbstract(transAbs);
+            }
+
+        }
+
+    }
+
+    private HashMap<String, ArrayList<Transaction>> groupPriceInTrans(HashMap<String, ArrayList<Transaction>> inputTranMap) {
+        HashMap<String, ArrayList<Transaction>> transGroupedPrice = new HashMap<>();
+        for (String key : inputTranMap.keySet()) {
+            ArrayList<Transaction> inputTrans = inputTranMap.get(key);
+
+            // Use a hash map to reduce a round of loop
+            String deliminator = "_";
+            HashMap<String, Transaction> mapToGroupPrice = new HashMap<>();
+            for (Transaction inputT : inputTrans) {
+                String tempKey = key + deliminator +
+                        inputT.getBankAbbr() + deliminator +
+                        inputT.getAccType() + deliminator +
+                        inputT.getTransDate() + deliminator +
+                        inputT.getTransAbstract();
+                if (mapToGroupPrice.containsKey(tempKey)) {
+                    Transaction groupedT = mapToGroupPrice.get(tempKey);
+                    groupedT.setIncomeJbh(groupedT.getIncomeJbh() + inputT.getIncomeJbh());
+                    groupedT.setOutcomeJbh(groupedT.getOutcomeJbh() + inputT.getOutcomeJbh());
+                    groupedT.setIncomeYbh(groupedT.getIncomeYbh() + inputT.getIncomeYbh());
+                    groupedT.setOutcomeYbh(groupedT.getOutcomeYbh() + inputT.getOutcomeYbh());
+                } else {
+                    mapToGroupPrice.put(tempKey, inputT);
+                }
+            }
+
+            ArrayList<Transaction> trans = new ArrayList<>(mapToGroupPrice.values());
+            transGroupedPrice.put(key, trans);
+        }
+
+
+        return transGroupedPrice;
+    }
+
+    /**
+     * 从文件中读取Transaction，并进行第一次整理
+     *
+     * @return
+     */
+    public HashMap<String, ArrayList<Transaction>> readTransFromRawFile() {
+        HashMap<String, ArrayList<Transaction>> transMap = new HashMap<>();
+
+
+        // 第一步 读取文件信息
         File srcDir = new File(Controller.srcDirPath);
         File[] files = srcDir.listFiles();
         if (files == null || files.length == 0) {
@@ -67,12 +176,15 @@ public class AccCalProcess {
                 if (fileContents == null || fileContents.length <= 2) {
                     System.out.println(file + " 中没有内容，跳过处理此文件");
                 } else {
-                    AccWithTrans summary = processContents(accAbbr, accType, fileContents);
-                    accSummarieList.add(summary);
+                    ArrayList<Transaction> rawTranList = processContents(accAbbr, accType, fileContents);
+                    if (!transMap.containsKey(accAbbr)) {
+                        transMap.put(accAbbr, new ArrayList<>());
+                    }
+                    transMap.get(accAbbr).addAll(rawTranList);
                 }
             }
         }
-        return accSummarieList;
+        return transMap;
     }
 
     public String[][] readFileContent(File file) {
@@ -94,31 +206,43 @@ public class AccCalProcess {
      *
      * @param contents
      */
-    public AccWithTrans processContents(String accAbbr, String accType, String[][] contents) {
+    public ArrayList<Transaction> processContents(String accAbbr, String accType, String[][] contents) {
+        ArrayList<Transaction> transList = new ArrayList<>();
         AccWithTrans summary = new AccWithTrans(accAbbr, accType);
         HashMap<String, Transaction> transMap = summary.getTransMap();
 
         // 招行的前几行是空的,而交行最后一行是汇总
         SheetMap sheetMap = new SheetMap();
-        String bankType = (contents[0][0].isEmpty()) ? SheetMap.BANK_NAME_ZS : SheetMap.BANK_NAME_JT;
-        int beginRow = (bankType.equals(SheetMap.BANK_NAME_ZS)) ? 13 : 2;
-        int endRow = (bankType.equals(SheetMap.BANK_NAME_ZS)) ? contents.length - 1 : contents.length - 2;
+        String bankAbbr = (contents[0][0].isEmpty()) ? SheetMap.BANK_NAME_ZS : SheetMap.BANK_NAME_JT;
+        int beginRow = (bankAbbr.equals(SheetMap.BANK_NAME_ZS)) ? 13 : 2;
+        int endRow = (bankAbbr.equals(SheetMap.BANK_NAME_ZS)) ? contents.length - 1 : contents.length - 2;
 
         for (int i = beginRow; i <= endRow; i++) {
-            String dateStr = parseDate(bankType, contents[i][sheetMap.getCellMap().get(bankType).get(SheetMap.TRANS_DATE).col]);
-            String transAbstract = parseTransAbs(bankType, accType,
-                    contents[i][sheetMap.getCellMap().get(bankType).get(SheetMap.TRANS_ABS).col]);
-            Double[] prices = parsePrice(bankType,
-                    contents[i][sheetMap.getCellMap().get(bankType).get(SheetMap.BL_FLAG).col],
-                    contents[i][sheetMap.getCellMap().get(bankType).get(SheetMap.INCOME_PRICE).col],
-                    contents[i][sheetMap.getCellMap().get(bankType).get(SheetMap.OUTCOME_PRICE).col]);
+            String dateStr = parseDate(bankAbbr, contents[i][sheetMap.getCellMap().get(bankAbbr).get(SheetMap.TRANS_DATE).col]);
+            String transAbstract = parseTransAbs(bankAbbr, accType,
+                    contents[i][sheetMap.getCellMap().get(bankAbbr).get(SheetMap.TRANS_ABS).col]);
+            Double[] prices = parsePrice(bankAbbr,
+                    contents[i][sheetMap.getCellMap().get(bankAbbr).get(SheetMap.BL_FLAG).col],
+                    contents[i][sheetMap.getCellMap().get(bankAbbr).get(SheetMap.INCOME_PRICE).col],
+                    contents[i][sheetMap.getCellMap().get(bankAbbr).get(SheetMap.OUTCOME_PRICE).col]);
 
-            Transaction trans = new Transaction(dateStr, transAbstract, prices[0], prices[1]);
-            mergeTransIntoMap(bankType, accType, transMap, trans);
+            Transaction trans = new Transaction(accAbbr, bankAbbr, accType, dateStr, transAbstract,
+                    0.00, 0.00, 0.00, 0.00);
+            switch (accType) {
+                case SheetMap.ACC_TYPE_JBH:
+                    trans.setIncomeJbh(prices[0]);
+                    trans.setOutcomeJbh(prices[1]);
+                    break;
+                case SheetMap.ACC_TYPE_YBH:
+                    trans.setIncomeYbh(prices[0]);
+                    trans.setOutcomeYbh(prices[1]);
+                    break;
+                default:
+                    System.out.println("未能检测出账户类型");
+            }
+            transList.add(trans);
         }
-
-        System.out.println(summary);
-        return summary;
+        return transList;
     }
 
     /**
@@ -150,13 +274,13 @@ public class AccCalProcess {
         String transAbs = rawAbstract;
 
         // Apply some rules
-        if (transAbs.contains("ETC")){
-            // ETC扣款#沪ENU543 -> #沪ENU543ETC扣款
-            String licenceNum = transAbs.substring(transAbs.indexOf('#'));
-            transAbs = licenceNum + "ETC扣款";
-        }
-//        if (transAbs.contains("手续费")) transAbs = appendBankAndAccType(bankType ,accType,"支付手续费");
-        if (transAbs.contains("手续费")) transAbs = "支付手续费";
+//        if (transAbs.contains("ETC")) {
+//            // ETC扣款#沪ENU543 -> #沪ENU543ETC扣款
+//            String licenceNum = transAbs.substring(transAbs.indexOf('#'));
+//            transAbs = licenceNum + "ETC扣款";
+//        }
+////        if (transAbs.contains("手续费")) transAbs = appendBankAndAccType(bankType ,accType,"支付手续费");
+//        if (transAbs.contains("手续费")) transAbs = "支付手续费";
 
         return transAbs;
     }
@@ -183,78 +307,4 @@ public class AccCalProcess {
         return prices;
     }
 
-    private void mergeTransIntoMap(String bankType, String accType,
-                                   HashMap<String, Transaction> transMap, Transaction transToMerge) {
-        Transaction transOrigin = transToMerge;
-        String key = transToMerge.getTransDate() + "_" + transToMerge.getTransAbstract();
-
-        // Special treat on key set
-//        if (key.contains("ETC")) key = "ETC";
-
-        if (transMap.containsKey(key)) {
-            transOrigin = transMap.get(key);
-            transOrigin.setIncomeJbh(transOrigin.getIncomeJbh() + transToMerge.getIncomeJbh());
-            transOrigin.setOutcomeJbh(transOrigin.getOutcomeJbh() + transToMerge.getOutcomeJbh());
-
-            // Apply some special rules
-           /* if (key.equals("ETC")) {
-                String transAbs = transToMerge.getTransAbstract();
-                String transOriAbs = transOrigin.getTransAbstract();
-//                transOriAbs = appendBankAndAccType(bankType, accType, transOriAbs);
-                System.out.println("transAbs: " + transAbs);
-                String licenceNum = transAbs.substring(transAbs.indexOf('#'));
-                // Append the licence num if not done yet
-                if (!transOriAbs.contains(licenceNum)) {
-                    transOrigin.setTransAbstract(transOriAbs + licenceNum);
-                }
-            }*/
-
-        }
-        transMap.put(key, transOrigin);
-    }
-
-    /**
-     * Add bank type info and acc type info for the abstract
-     *
-     * @param bankType
-     * @param accType
-     * @param transAbs
-     * @return
-     */
-    private String appendBankAndAccType(String bankType, String accType, String transAbs) {
-        if (!transAbs.contains(bankType)) {
-            transAbs = bankType + accType + transAbs;
-        }
-        return transAbs;
-    }
-
-    /**
-     * Group the transactions by date, bankType, and abstract.
-     * @param accWithTransList
-     * @return
-     */
-    public HashMap<String, AccSummary2> sumUpAcc(ArrayList<AccWithTrans> accWithTransList) {
-        HashMap<String, AccSummary2> accSummaryMap = new HashMap<>();
-        for (AccWithTrans accWithTrans: accWithTransList){
-            // key is account abbr. If not exist, create one.
-            String accAbbr = accWithTrans.getAccAbbr();
-            if (!accSummaryMap.containsKey(accAbbr)){
-                accSummaryMap.put(accAbbr, new AccSummary2());
-            }
-
-            AccSummary2 accSummary2 = accSummaryMap.get(accAbbr);
-
-            for (String transKey: accWithTrans.getTransMap().keySet()){
-
-            }
-            // Allocate date
-            String dateStr = accSummary2.getDate();
-
-            String transAbbr = accSummary2.getTransAbstract();
-
-
-        }
-
-        return accSummaryMap;
-    }
 }
